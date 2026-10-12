@@ -40,7 +40,7 @@ Kategorier: senaste, akvarell, akryl, teckning, foto, skulptur, objekt, portratt
 
 - Utställningarna ligger i `site/src/lib/utstallningar.ts`: fakta, dikt och katalogens sidor i ordning.
 - Bilderna ligger i `site/src/assets/utstallningar/<slug>/`.
-- Sidor per språk: `/<sv|no|en>/aktuellt/<slug>/`, `.../inbjudan/` (utskrift) och `.../vernissage.ics`. `/<språk>/aktuellt/` skickar vidare till aktuell utställning.
+- Sidor per språk: `/<sv|no|en>/aktuellt/<slug>/` och `.../vernissage.ics`. `/<språk>/aktuellt/` skickar vidare till aktuell utställning.
 - Startsidans ingång och statusen (kommande, pågående, tidigare) styrs av datumen och byter själv.
 
 ## Förhandsvisning

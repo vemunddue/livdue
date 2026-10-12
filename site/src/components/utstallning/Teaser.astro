@@ -37,7 +37,7 @@ const visas = status(u) !== 'avslutad';
           quality={88}
           loading="eager"
         />
-        <span class="vidare">{t.tillUtstallningen} &rarr;</span>
+        <span class="vidare">{t.tillUtstallningen}</span>
       </a>
     </section>
   )
@@ -95,17 +95,23 @@ const visas = status(u) !== 'avslutad';
   a:hover :global(img) {
     transform: translateY(-4px);
   }
+  /* Tunn ram, lika bred som linjen under titeln, så att blocket får ett tydligt slut */
   .vidare {
-    margin-top: 28px;
-    font-size: 14px;
-    color: var(--muted);
-    border-bottom: 1px solid var(--line);
-    padding-bottom: 2px;
-    transition: color 0.2s, border-color 0.2s;
+    width: min(70%, 340px);
+    margin-top: 40px;
+    padding: 13px 0 12px;
+    border: 1px solid var(--ink);
+    font-size: 12px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    padding-left: 0.22em;
+    color: var(--ink);
+    transition: background 0.25s ease, color 0.25s ease;
   }
-  a:hover .vidare {
-    color: var(--text);
-    border-color: var(--muted);
+  a:hover .vidare,
+  a:focus-visible .vidare {
+    background: var(--ink);
+    color: var(--bg);
   }
   @media (max-width: 640px) {
     .teaser {

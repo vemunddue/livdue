@@ -1,6 +1,5 @@
 ---
-// Inbjudan i sajtens eget formspråk. Visas på utställningssidan och som
-// egen sida som går att skriva ut eller dela.
+// Inbjudan i sajtens eget formspråk. Visas på utställningssidan och kan delas.
 import { Image } from 'astro:assets';
 import type { Utstallning } from '../../lib/utstallningar';
 import type { Locale } from '../../lib/i18n';
@@ -12,9 +11,8 @@ interface Props {
   u: Utstallning;
   lang: Locale;
   delaUrl: string;
-  utskriftHref?: string;
 }
-const { u, lang, delaUrl, utskriftHref } = Astro.props;
+const { u, lang, delaUrl } = Astro.props;
 const t = UTS_TEXT[lang];
 const ics = url(`/${lang}/aktuellt/${u.slug}/vernissage.ics`);
 const kl = t.kl ? `${t.kl} ` : '';
@@ -52,7 +50,6 @@ const kl = t.kl ? `${t.kl} ` : '';
       {t.delaInbjudan}
     </button>
     <a class="lank" href={ics} download>{t.laggTillKalender}</a>
-    {utskriftHref ? <a class="lank" href={utskriftHref}>{t.skrivUt}</a> : <button type="button" class="lank" data-skriv-ut>{t.skrivUt}</button>}
   </div>
   <p class="kvitto" data-kvitto aria-live="polite"></p>
 </div>
@@ -217,5 +214,4 @@ const kl = t.kl ? `${t.kl} ` : '';
       }
     });
   });
-  document.querySelectorAll('[data-skriv-ut]').forEach((k) => k.addEventListener('click', () => print()));
 </script>

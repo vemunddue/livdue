@@ -22,7 +22,6 @@ export interface UtsText {
   oppetRad: (tider: string[]) => string;
   ovrigaRad: (tel: string) => string;
   delaInbjudan: string;
-  skrivUt: string;
   lankKopierad: string;
   inbjudanTill: string;
   vernissageText: (datum: string, tid: string, galleri: string) => string;
@@ -61,7 +60,6 @@ export const UTS_TEXT: Record<Locale, UtsText> = {
     oppetRad: (t) => `Öppet ${t.join(' och ').toLowerCase()}.`,
     ovrigaRad: (tel) => `För besök vid övriga tider, ring ${tel}.`,
     delaInbjudan: 'Dela inbjudan',
-    skrivUt: 'Skriv ut',
     lankKopierad: 'Länken är kopierad.',
     inbjudanTill: 'Inbjudan till',
     vernissageText: (d, t, g) => `Vernissage ${d.toLowerCase()} kl. ${t} på ${g}.`,
@@ -98,7 +96,6 @@ export const UTS_TEXT: Record<Locale, UtsText> = {
     oppetRad: (t) => `Åpent ${t.join(' og ').toLowerCase()}.`,
     ovrigaRad: (tel) => `For besøk på andre tider, ring ${tel}.`,
     delaInbjudan: 'Del invitasjonen',
-    skrivUt: 'Skriv ut',
     lankKopierad: 'Lenken er kopiert.',
     inbjudanTill: 'Invitasjon til',
     vernissageText: (d, t, g) => `Vernissasje ${d.toLowerCase()} kl. ${t} på ${g}.`,
@@ -135,7 +132,6 @@ export const UTS_TEXT: Record<Locale, UtsText> = {
     oppetRad: (t) => `Open ${t.join(' and ')}.`,
     ovrigaRad: (tel) => `To visit at other times, call ${tel}.`,
     delaInbjudan: 'Share invitation',
-    skrivUt: 'Print',
     lankKopierad: 'The link has been copied.',
     inbjudanTill: 'Invitation to',
     vernissageText: (d, t, g) => `Opening ${d}, ${t}, at ${g}.`,

@@ -120,7 +120,7 @@ const telLank = `tel:+46${u.telefon.replace(/\D/g, '').replace(/^(46|0)/, '')}`;
 
     <section class="inbjudan-sektion" id="inbjudan" aria-labelledby="inbjudan-rubrik">
       <h2 class="versal" id="inbjudan-rubrik">{t.inbjudan}</h2>
-      <Inbjudan u={u} lang={lang} delaUrl={sidUrl} utskriftHref={url(`${bas}inbjudan/`)} />
+      <Inbjudan u={u} lang={lang} delaUrl={sidUrl} />
     </section>
   </article>
 </Layout>
