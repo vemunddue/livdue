@@ -2,22 +2,32 @@
 import '../styles/global.css';
 import { u } from '../lib/url';
 import { UI, LOCALES, type Locale } from '../lib/i18n';
+import { aktuellUtstallning } from '../lib/utstallningar';
 
 interface Props {
   lang: Locale;
   title?: string;
   description?: string;
   hideFooter?: boolean;
+  hideHeader?: boolean;
+  bodyClass?: string;
+  /** Sidan finns bara på detta språk: språkväljaren går då till de andra språkens startsidor */
+  ettSprak?: boolean;
 }
 
-const { lang, title, description, hideFooter = false } = Astro.props;
+const { lang, title, description, hideFooter = false, hideHeader = false, bodyClass, ettSprak = false } = Astro.props;
 const t = UI[lang];
 const year = new Date().getFullYear();
 const fullTitle = title ? `${title} — Liv Due` : t.siteTitle;
 const desc = description ?? t.metaDesc;
 const path = Astro.url.pathname;
+const forhandsvisning = import.meta.env.PUBLIC_FORHANDSVISNING === '1';
 
 const nav = [
+  // Aktuellt går direkt till den aktuella utställningen
+  ...(t.nav.aktuellt
+    ? [{ href: u(`/${lang}/aktuellt/${aktuellUtstallning().slug}/`), label: t.nav.aktuellt, aktiv: u(`/${lang}/aktuellt/`) }]
+    : []),
   { href: u(`/${lang}/verk/`), label: t.nav.verk },
   { href: u(`/${lang}/om/`), label: t.nav.om },
   { href: u(`/${lang}/kontakt/`), label: t.nav.kontakt },
@@ -31,7 +41,7 @@ const rest = rel.replace(new RegExp(`^/${lang}(?=/|$)`), '') || '/';
 const langLinks = LOCALES.map((loc) => ({
   loc,
   code: loc.toUpperCase(),
-  href: u(`/${loc}${rest === '/' ? '/' : rest}`),
+  href: ettSprak && loc !== lang ? u(`/${loc}/`) : u(`/${loc}${rest === '/' ? '/' : rest}`),
   active: loc === lang,
 }));
 const alternates = LOCALES.map((loc) => ({
@@ -48,21 +58,28 @@ const alternates = LOCALES.map((loc) => ({
     <title>{fullTitle}</title>
     <meta name="description" content={desc} />
     <meta name="generator" content={Astro.generator} />
-    {alternates.map((a) => <link rel="alternate" hreflang={a.loc} href={a.href} />)}
-    <link
-      rel="alternate"
-      hreflang="x-default"
-      href={new URL(u(`/en${rest === '/' ? '/' : rest}`), Astro.site).toString()}
-    />
+    {forhandsvisning && <meta name="robots" content="noindex, nofollow" />}
+    <slot name="head" />
+    {!ettSprak && alternates.map((a) => <link rel="alternate" hreflang={a.loc} href={a.href} />)}
+    {
+      !ettSprak && (
+        <link
+          rel="alternate"
+          hreflang="x-default"
+          href={new URL(u(`/en${rest === '/' ? '/' : rest}`), Astro.site).toString()}
+        />
+      )
+    }
   </head>
-  <body>
+  <body class={bodyClass}>
+    {!hideHeader && (
     <header id="sajthuvud">
       <div class="inner">
         <a class="wordmark" href={u(`/${lang}/`)}>LIV DUE</a>
         <nav aria-label="Meny">
           {
             nav.map((item) => (
-              <a href={item.href} aria-current={path.startsWith(item.href) ? 'page' : undefined}>
+              <a href={item.href} aria-current={path.startsWith((item as { aktiv?: string }).aktiv ?? item.href) ? 'page' : undefined}>
                 {item.label}
               </a>
             ))
@@ -71,9 +88,11 @@ const alternates = LOCALES.map((loc) => ({
       </div>
       <slot name="subnav" />
     </header>
+    )}
     <main>
       <slot />
     </main>
+    {forhandsvisning && <div class="forhandsvisning">Förhandsvisning</div>}
     {
       !hideFooter && (
         <footer>
@@ -223,6 +242,21 @@ const alternates = LOCALES.map((loc) => ({
     outline-offset: 2px;
     border-radius: 4px;
   }
+  .forhandsvisning {
+    position: fixed;
+    left: 16px;
+    bottom: 16px;
+    z-index: 50;
+    padding: 5px 10px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--bg);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    pointer-events: none;
+  }
   footer {
     max-width: var(--maxw);
     width: 100%;
@@ -299,6 +333,7 @@ const alternates = LOCALES.map((loc) => ({
   // Headern göms vid scroll neråt och glider in igen vid scroll uppåt
   (() => {
     const header = document.getElementById('sajthuvud');
+    if (!header) return;
     let senasteY = window.scrollY;
     const uppdatera = () => {
       const y = window.scrollY;

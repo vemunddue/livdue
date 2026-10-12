@@ -1,0 +1,305 @@
+---
+import '@fontsource/open-sans/300.css';
+import { Image } from 'astro:assets';
+import Layout from '../../../../layouts/Layout.astro';
+import Katalog from '../../../../components/Katalog.astro';
+import Status from '../../../../components/utstallning/Status.astro';
+import Inbjudan from '../../../../components/utstallning/Inbjudan.astro';
+import { UTSTALLNINGAR, lokal, type Utstallning } from '../../../../lib/utstallningar';
+import { UTS_TEXT, nar } from '../../../../lib/utstallning-text';
+import { LOCALES, type Locale } from '../../../../lib/i18n';
+import { u as url } from '../../../../lib/url';
+
+export function getStaticPaths() {
+  return LOCALES.flatMap((lang) => UTSTALLNINGAR.map((u) => ({ params: { lang, slug: u.slug }, props: { u } })));
+}
+
+const lang = Astro.params.lang as Locale;
+const u = lokal(Astro.props.u as Utstallning, lang);
+const t = UTS_TEXT[lang];
+const g = u.galleri;
+const bas = `/${lang}/aktuellt/${u.slug}/`;
+const sidUrl = new URL(url(bas), Astro.site).toString();
+const ogBild = new URL(url(`/og/${u.slug}.jpg`), Astro.site).toString();
+const beskrivning = `${u.konstnar}: ${u.titel}. ${g.namn}, ${g.adress}, ${g.stad}. ${u.datumText}. ${t.vernissageText(u.vernissage.datum, u.vernissage.tid, g.namn)}`;
+const telLank = `tel:+46${u.telefon.replace(/\D/g, '').replace(/^(46|0)/, '')}`;
+---
+
+<Layout lang={lang} title={`${u.titel} – ${g.namn}`} description={beskrivning}>
+  <Fragment slot="head">
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={`${u.konstnar}: ${u.titel.toUpperCase()}`} />
+    <meta property="og:description" content={beskrivning} />
+    <meta property="og:url" content={sidUrl} />
+    <meta property="og:image" content={ogBild} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+  </Fragment>
+
+  <article class="utstallning">
+    <header class="huvud">
+      <Status u={u} lang={lang} class="versal" />
+      <h1 class="titel">{u.titel.toUpperCase()}</h1>
+      <hr />
+      <p class="undertitel">{u.konstnar} <span aria-hidden="true">·</span> {g.namn}</p>
+      <p class="datum">{u.datumText}</p>
+    </header>
+
+    <figure class="huvudbild">
+      <Image
+        src={u.bild}
+        alt={u.bildAlt}
+        width={827}
+        widths={[480, 827]}
+        sizes="(max-width: 640px) 80vw, 520px"
+        quality={88}
+        loading="eager"
+      />
+    </figure>
+
+    <section class="fakta">
+      <dl>
+        <div>
+          <dt>{t.vernissage}</dt>
+          <dd>{nar(lang, u.vernissage.datum, u.vernissage.tid)}</dd>
+        </div>
+        <div>
+          <dt>{t.utstallningen}</dt>
+          <dd>{u.datumText}</dd>
+        </div>
+        <div>
+          <dt>{t.oppet}</dt>
+          <dd>
+            {u.oppettider.map((rad) => <span class="blockrad">{rad}</span>)}
+            <span class="blockrad dampad">{u.ovrigaTider}, {t.ring} <a href={telLank}>{u.telefon}</a></span>
+          </dd>
+        </div>
+        <div>
+          <dt>{t.plats}</dt>
+          <dd>
+            <span class="blockrad">{g.namn}</span>
+            <span class="blockrad">{g.adress}, {g.stad}</span>
+          </dd>
+        </div>
+      </dl>
+      <p class="atgarder">
+        <a href={url(`${bas}vernissage.ics`)} download>{t.laggTillKalender}</a>
+        <a href={g.karta} target="_blank" rel="noopener">{t.visaPaKarta}</a>
+        <a href={g.webb} target="_blank" rel="noopener">{g.webb.replace('https://', '')}</a>
+      </p>
+    </section>
+
+    <section class="dikt" aria-labelledby="dikt-rubrik">
+      <h2 class="versal" id="dikt-rubrik">{t.text}</h2>
+      <div class="strofer">
+        {
+          u.dikt.map((strof) => (
+            <p>
+              {strof.map((rad, j) => (
+                <>
+                  {rad}
+                  {j < strof.length - 1 && <br />}
+                </>
+              ))}
+            </p>
+          ))
+        }
+        <p class="signatur">
+          {u.konstnar}
+          {t.oversattNot && <span class="not">{t.oversattNot}</span>}
+        </p>
+      </div>
+    </section>
+
+    <section class="katalog-sektion" id="katalog" aria-labelledby="katalog-rubrik">
+      <h2 class="versal" id="katalog-rubrik">{t.katalogen}</h2>
+      <p class="ingress">{t.katalogIngress}</p>
+      <Katalog sidor={u.katalog} lang={lang} titel={u.titel} />
+    </section>
+
+    <section class="inbjudan-sektion" id="inbjudan" aria-labelledby="inbjudan-rubrik">
+      <h2 class="versal" id="inbjudan-rubrik">{t.inbjudan}</h2>
+      <Inbjudan u={u} lang={lang} delaUrl={sidUrl} utskriftHref={url(`${bas}inbjudan/`)} />
+    </section>
+  </article>
+</Layout>
+
+<style>
+  .utstallning {
+    padding-top: 24px;
+  }
+  .huvud {
+    text-align: center;
+    max-width: 640px;
+    margin: 0 auto;
+  }
+  .titel {
+    margin: 18px 0 0;
+    font-family: var(--font-tunn);
+    font-weight: 300;
+    font-size: clamp(44px, 9vw, 84px);
+    line-height: 1;
+    letter-spacing: 0.06em;
+    padding-left: 0.06em;
+    color: var(--ink);
+  }
+  .huvud hr {
+    width: min(100%, 420px);
+    border: 0;
+    border-top: 1px solid var(--ink);
+    margin: 26px auto 20px;
+  }
+  .undertitel {
+    margin: 0;
+    font-size: 15px;
+    letter-spacing: 0.04em;
+  }
+  .datum {
+    margin: 4px 0 0;
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 17px;
+    color: var(--muted);
+  }
+
+  .huvudbild {
+    margin: 72px auto 0;
+    max-width: 520px;
+  }
+  .huvudbild :global(img) {
+    width: auto;
+    max-height: 78vh;
+    margin: 0 auto;
+    border-radius: 0;
+    mix-blend-mode: multiply;
+  }
+
+  section {
+    margin: 140px auto 0;
+  }
+  section > .versal {
+    text-align: center;
+    margin: 0 0 48px;
+  }
+
+  .fakta {
+    max-width: 560px;
+    margin-top: 96px;
+  }
+  dl {
+    margin: 0;
+    border-top: 1px solid var(--line);
+  }
+  dl > div {
+    display: grid;
+    grid-template-columns: 9.5em 1fr;
+    gap: 16px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  dt {
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding-top: 3px;
+  }
+  dd {
+    margin: 0;
+    font-size: 15px;
+  }
+  .blockrad {
+    display: block;
+  }
+  .dampad {
+    color: var(--muted);
+    font-size: 14px;
+    margin-top: 2px;
+  }
+  dd a {
+    border-bottom: 1px solid var(--line);
+  }
+  .atgarder {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px 28px;
+    margin: 28px 0 0;
+    font-size: 14px;
+  }
+  .atgarder a {
+    color: var(--muted);
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 2px;
+  }
+  .atgarder a:hover,
+  dd a:hover {
+    color: var(--text);
+    border-color: var(--muted);
+  }
+
+  .dikt {
+    max-width: 640px;
+  }
+  .strofer {
+    font-family: var(--font-serif);
+    font-size: 19px;
+    line-height: 1.8;
+    color: var(--ink);
+  }
+  .strofer p {
+    margin: 0 0 1.8em;
+  }
+  .signatur {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 13px;
+    line-height: 1.6;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .signatur .not {
+    display: block;
+    margin-top: 6px;
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 14px;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .katalog-sektion {
+    max-width: none;
+  }
+  .ingress {
+    max-width: 44ch;
+    margin: -28px auto 48px;
+    text-align: center;
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 17px;
+    color: var(--muted);
+  }
+
+  @media (max-width: 640px) {
+    .huvudbild {
+      margin-top: 48px;
+    }
+    section {
+      margin-top: 96px;
+    }
+    .fakta {
+      margin-top: 64px;
+    }
+    dl > div {
+      grid-template-columns: 1fr;
+      gap: 2px;
+    }
+    .strofer {
+      font-size: 17px;
+      line-height: 1.75;
+    }
+  }
+</style>

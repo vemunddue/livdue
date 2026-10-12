@@ -4,6 +4,8 @@ import { Image } from 'astro:assets';
 import Layout from '../../layouts/Layout.astro';
 import { u } from '../../lib/url';
 import { LOCALES, UI, type Locale } from '../../lib/i18n';
+import Teaser from '../../components/utstallning/Teaser.astro';
+import { aktuellUtstallning } from '../../lib/utstallningar';
 
 export function getStaticPaths() {
   return LOCALES.map((lang) => ({ params: { lang } }));
@@ -18,6 +20,8 @@ const utvalda = (await getCollection('verk', (v) => v.data.utvald)).sort(
 
 <Layout lang={lang}>
   <p class="intro">{t.tagline}</p>
+
+  <Teaser u={aktuellUtstallning()} lang={lang} />
 
   <div class="stack">
     {

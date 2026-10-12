@@ -1,0 +1,27 @@
+---
+// Visar "Kommande / Pågående / Tidigare utställning" på sidans språk. Räknas vid
+// bygget och uppdateras i webbläsaren, så texten stämmer även om sajten inte byggs om.
+import { status, STATUS_TEXT, type Utstallning } from '../../lib/utstallningar';
+import type { Locale } from '../../lib/i18n';
+
+interface Props {
+  u: Utstallning;
+  lang: Locale;
+  class?: string;
+}
+const { u, lang, class: klass } = Astro.props;
+const texter = STATUS_TEXT[lang];
+---
+
+<span class={klass} data-uts-status data-start={u.start} data-slut={u.slut} data-texter={JSON.stringify(texter)}>
+  {texter[status(u)]}
+</span>
+
+<script>
+  const idag = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Stockholm' });
+  document.querySelectorAll<HTMLElement>('[data-uts-status]').forEach((el) => {
+    const s = idag < el.dataset.start! ? 'kommande' : idag > el.dataset.slut! ? 'avslutad' : 'pagar';
+    el.textContent = JSON.parse(el.dataset.texter!)[s];
+    el.closest<HTMLElement>('[data-dolj-nar-avslutad]')?.toggleAttribute('hidden', s === 'avslutad');
+  });
+</script>

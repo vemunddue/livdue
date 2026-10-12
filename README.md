@@ -36,7 +36,19 @@ utvald: true   # visas på startsidan
 Kategorier: senaste, akvarell, akryl, teckning, foto, skulptur, objekt, portratt, gras, rum, sten
 (definieras i `site/src/lib/kategorier.ts`)
 
+## Aktuellt och utställningar (svenska, norska, engelska)
+
+- Utställningarna ligger i `site/src/lib/utstallningar.ts`: fakta, dikt och katalogens sidor i ordning.
+- Bilderna ligger i `site/src/assets/utstallningar/<slug>/`.
+- Sidor per språk: `/<sv|no|en>/aktuellt/<slug>/`, `.../inbjudan/` (utskrift) och `.../vernissage.ics`. `/<språk>/aktuellt/` skickar vidare till aktuell utställning.
+- Startsidans ingång och statusen (kommande, pågående, tidigare) styrs av datumen och byter själv.
+
+## Förhandsvisning
+
+`site/scripts/forhandsvisning.sh` bygger en noindex-version och publicerar den till
+https://vemunddue.github.io/livdue-forhandsvisning/ (eget repo, påverkar inte livdue.com).
+
 ## Hosting
 
-Statisk sajt — byggs och deployas till Cloudflare Pages/Netlify.
+Statisk sajt på GitHub Pages: `gh-pages`-grenen i det här repot, med egen domän via CNAME.
 OBS: mailen (livi@livdue.com) ligger hos one.com — rör inte MX-posterna vid DNS-ändringar.

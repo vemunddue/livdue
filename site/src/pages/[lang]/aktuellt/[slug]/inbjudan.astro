@@ -1,0 +1,65 @@
+---
+// Inbjudan som egen sida: lätt att dela och att skriva ut.
+import '@fontsource/open-sans/300.css';
+import Layout from '../../../../layouts/Layout.astro';
+import Inbjudan from '../../../../components/utstallning/Inbjudan.astro';
+import { UTSTALLNINGAR, lokal, type Utstallning } from '../../../../lib/utstallningar';
+import { UTS_TEXT } from '../../../../lib/utstallning-text';
+import { LOCALES, type Locale } from '../../../../lib/i18n';
+import { u as url } from '../../../../lib/url';
+
+export function getStaticPaths() {
+  return LOCALES.flatMap((lang) => UTSTALLNINGAR.map((u) => ({ params: { lang, slug: u.slug }, props: { u } })));
+}
+const lang = Astro.params.lang as Locale;
+const u = lokal(Astro.props.u as Utstallning, lang);
+const t = UTS_TEXT[lang];
+const sidUrl = new URL(url(`/${lang}/aktuellt/${u.slug}/`), Astro.site).toString();
+const ogBild = new URL(url(`/og/${u.slug}.jpg`), Astro.site).toString();
+---
+
+<Layout lang={lang} title={`${t.inbjudan} – ${u.titel}`} description={t.vernissageText(u.vernissage.datum, u.vernissage.tid, u.galleri.namn)}>
+  <Fragment slot="head">
+    <meta property="og:title" content={`${t.inbjudan}: ${u.konstnar}, ${u.titel.toUpperCase()}`} />
+    <meta property="og:image" content={ogBild} />
+  </Fragment>
+  <div class="yta">
+    <Inbjudan u={u} lang={lang} delaUrl={sidUrl} />
+    <p class="tillbaka"><a href={url(`/${lang}/aktuellt/${u.slug}/`)}>{t.tillUtstallningen}</a></p>
+  </div>
+</Layout>
+
+<style>
+  .yta {
+    padding: 24px 0 0;
+  }
+  .tillbaka {
+    text-align: center;
+    margin: 40px 0 0;
+    font-size: 14px;
+  }
+  .tillbaka a {
+    color: var(--muted);
+  }
+  .tillbaka a:hover {
+    color: var(--text);
+  }
+</style>
+<style is:global>
+  @page {
+    size: A5;
+    margin: 12mm;
+  }
+  @media print {
+    #sajthuvud,
+    footer,
+    .forhandsvisning,
+    .tillbaka {
+      display: none !important;
+    }
+    html,
+    body {
+      background: #fff;
+    }
+  }
+</style>

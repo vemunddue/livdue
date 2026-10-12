@@ -1,0 +1,27 @@
+---
+// Aktuellt har ingen egen översikt: adressen skickar vidare till den aktuella utställningen.
+import { aktuellUtstallning } from '../../../lib/utstallningar';
+import { u } from '../../../lib/url';
+import { LOCALES, type Locale } from '../../../lib/i18n';
+
+export function getStaticPaths() {
+  return LOCALES.map((lang) => ({ params: { lang } }));
+}
+const lang = Astro.params.lang as Locale;
+const mal = u(`/${lang}/aktuellt/${aktuellUtstallning().slug}/`);
+---
+
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <title>Liv Due</title>
+    <meta name="robots" content="noindex" />
+    <meta http-equiv="refresh" content={`0; url=${mal}`} />
+    <link rel="canonical" href={mal} />
+    <script is:inline define:vars={{ mal }}>location.replace(mal);</script>
+  </head>
+  <body>
+    <a href={mal}>&rarr;</a>
+  </body>
+</html>

@@ -11,7 +11,7 @@ export function isLocale(x: unknown): x is Locale {
 // Gränssnittstexter per språk. Verk-titlar översätts ALDRIG (de kommer från innehållet).
 export const UI: Record<Locale, {
   htmlLang: string;
-  nav: { verk: string; om: string; kontakt: string };
+  nav: { verk: string; om: string; kontakt: string; aktuellt?: string };
   tagline: string;
   seeAll: string;
   metaDesc: string;
@@ -23,7 +23,7 @@ export const UI: Record<Locale, {
 }> = {
   sv: {
     htmlLang: 'sv',
-    nav: { verk: 'Verk', om: 'Om', kontakt: 'Kontakt' },
+    nav: { aktuellt: 'Aktuellt', verk: 'Verk', om: 'Om', kontakt: 'Kontakt' },
     tagline: 'måleri · skulptur · teckning · foto · silver · film',
     seeAll: 'Se alla verk',
     metaDesc: 'Liv Due — konstnär. Måleri, skulptur, teckning, foto, silver och film.',
@@ -36,7 +36,7 @@ export const UI: Record<Locale, {
   },
   no: {
     htmlLang: 'no',
-    nav: { verk: 'Arbeider', om: 'Om', kontakt: 'Kontakt' },
+    nav: { aktuellt: 'Aktuelt', verk: 'Arbeider', om: 'Om', kontakt: 'Kontakt' },
     tagline: 'maleri · skulptur · tegning · foto · sølv · film',
     seeAll: 'Se alle arbeider',
     metaDesc: 'Liv Due — kunstner. Maleri, skulptur, tegning, foto, sølv og film.',
@@ -49,7 +49,7 @@ export const UI: Record<Locale, {
   },
   en: {
     htmlLang: 'en',
-    nav: { verk: 'Works', om: 'About', kontakt: 'Contact' },
+    nav: { aktuellt: 'Current', verk: 'Works', om: 'About', kontakt: 'Contact' },
     tagline: 'painting · sculpture · drawing · photography · silver · film',
     seeAll: 'See all works',
     metaDesc: 'Liv Due — artist. Painting, sculpture, drawing, photography, silver and film.',

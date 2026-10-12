@@ -1,0 +1,221 @@
+---
+// Inbjudan i sajtens eget formspråk. Visas på utställningssidan och som
+// egen sida som går att skriva ut eller dela.
+import { Image } from 'astro:assets';
+import type { Utstallning } from '../../lib/utstallningar';
+import type { Locale } from '../../lib/i18n';
+import { UTS_TEXT } from '../../lib/utstallning-text';
+import { u as url } from '../../lib/url';
+
+interface Props {
+  /** Redan översatt med lokal() */
+  u: Utstallning;
+  lang: Locale;
+  delaUrl: string;
+  utskriftHref?: string;
+}
+const { u, lang, delaUrl, utskriftHref } = Astro.props;
+const t = UTS_TEXT[lang];
+const ics = url(`/${lang}/aktuellt/${u.slug}/vernissage.ics`);
+const kl = t.kl ? `${t.kl} ` : '';
+---
+
+<div class="inbjudan-ram">
+  <article class="kort" aria-label={`${t.inbjudanTill} ${u.titel}`}>
+    <p class="namn">{u.konstnar.toUpperCase()}</p>
+    <p class="titel">{u.titel.toUpperCase()}</p>
+    <hr />
+    <p class="valkommen">{t.valkommen}</p>
+    <p class="nar">{u.vernissage.datum} {kl}{u.vernissage.tid}</p>
+    <div class="bild">
+      <Image src={u.bild} alt={u.bildAlt} width={520} widths={[320, 520, 800]} sizes="(max-width: 520px) 50vw, 240px" quality={86} />
+    </div>
+    <p class="info">
+      <span>{t.pagarTill(u.datumText.replace(' 2026', ''))}</span>
+      <span>{t.oppetRad(u.oppettider)}</span>
+      <span>{t.ovrigaRad(u.telefon)}</span>
+    </p>
+    <p class="galleri">{u.galleri.namn.toUpperCase()}</p>
+    <p class="adress">{u.galleri.adress} · {u.galleri.stad}</p>
+  </article>
+
+  <div class="atgarder">
+    <button
+      type="button"
+      class="lank"
+      data-dela
+      data-url={delaUrl}
+      data-titel={`${u.konstnar}: ${u.titel}`}
+      data-text={t.vernissageText(u.vernissage.datum, u.vernissage.tid, u.galleri.namn)}
+      data-kopierad={t.lankKopierad}
+    >
+      {t.delaInbjudan}
+    </button>
+    <a class="lank" href={ics} download>{t.laggTillKalender}</a>
+    {utskriftHref ? <a class="lank" href={utskriftHref}>{t.skrivUt}</a> : <button type="button" class="lank" data-skriv-ut>{t.skrivUt}</button>}
+  </div>
+  <p class="kvitto" data-kvitto aria-live="polite"></p>
+</div>
+
+<style>
+  .inbjudan-ram {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .kort {
+    width: min(100%, 460px);
+    padding: 52px 40px 40px;
+    background: #fff;
+    box-shadow:
+      0 1px 2px rgba(30, 25, 20, 0.06),
+      0 24px 60px -28px rgba(30, 25, 20, 0.3);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    color: var(--ink);
+  }
+  .kort p {
+    margin: 0;
+  }
+  .namn {
+    font-size: 21px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    line-height: 1.1;
+    padding-left: 0.2em;
+  }
+  .titel {
+    font-family: var(--font-tunn);
+    font-weight: 300;
+    font-size: 31px;
+    letter-spacing: 0.06em;
+    line-height: 1.2;
+    padding-left: 0.06em;
+  }
+  hr {
+    width: 100%;
+    border: 0;
+    border-top: 1px solid var(--ink);
+    margin: 14px 0 14px;
+  }
+  .valkommen {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 15px;
+    color: var(--muted);
+  }
+  .nar {
+    font-size: 15px;
+    letter-spacing: 0.02em;
+  }
+  .bild {
+    height: 300px;
+    width: 60%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 28px 0;
+  }
+  .bild :global(img) {
+    max-height: 100%;
+    width: auto;
+    border-radius: 0;
+    mix-blend-mode: multiply;
+  }
+  .info {
+    font-family: var(--font-serif);
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--oliv);
+    margin-bottom: 22px !important;
+  }
+  .info span {
+    display: block;
+    text-wrap: balance;
+  }
+  .galleri {
+    font-family: var(--font-tunn);
+    font-weight: 300;
+    font-size: 15px;
+    letter-spacing: 0.2em;
+    padding-left: 0.2em;
+  }
+  .adress {
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 4px !important;
+  }
+  .atgarder {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px 28px;
+    margin-top: 32px;
+  }
+  .lank {
+    border: 0;
+    background: none;
+    padding: 4px 0;
+    font: inherit;
+    font-size: 14px;
+    color: var(--muted);
+    border-bottom: 1px solid var(--line);
+    cursor: pointer;
+  }
+  .lank:hover {
+    color: var(--text);
+    border-color: var(--muted);
+  }
+  .kvitto {
+    min-height: 1.6em;
+    margin: 10px 0 0;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  @media (max-width: 420px) {
+    .kort {
+      padding: 40px 22px 32px;
+    }
+    .bild {
+      height: 240px;
+    }
+    .titel {
+      font-size: 27px;
+    }
+  }
+  @media print {
+    .atgarder,
+    .kvitto {
+      display: none;
+    }
+    .kort {
+      box-shadow: none;
+      width: 100%;
+      max-width: 13cm;
+    }
+  }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('[data-dela]').forEach((knapp) => {
+    knapp.addEventListener('click', async () => {
+      const kvitto = knapp.closest('.inbjudan-ram')?.querySelector('[data-kvitto]');
+      const { url, titel, text } = knapp.dataset;
+      try {
+        if (navigator.share) {
+          await navigator.share({ title: titel, text, url });
+          return;
+        }
+        await navigator.clipboard.writeText(url!);
+        if (kvitto) kvitto.textContent = knapp.dataset.kopierad!;
+      } catch (e) {
+        if ((e as Error).name !== 'AbortError' && kvitto) kvitto.textContent = url!;
+      }
+    });
+  });
+  document.querySelectorAll('[data-skriv-ut]').forEach((k) => k.addEventListener('click', () => print()));
+</script>

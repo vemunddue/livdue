@@ -1,0 +1,973 @@
+---
+// Bläddringsbar katalog. Sidorna renderas i webbläsaren utifrån data, så att
+// samma bok kan visas som uppslag (dator) eller en sida i taget (mobil).
+// Utan JavaScript visas sidorna som en enkel lista.
+import '@fontsource/open-sans/300.css';
+import { getImage } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+import type { Sida } from '../lib/utstallningar';
+import type { Locale } from '../lib/i18n';
+import { UTS_TEXT } from '../lib/utstallning-text';
+
+interface Props {
+  sidor: Sida[];
+  lang: Locale;
+  titel: string;
+}
+
+const { sidor, lang, titel } = Astro.props;
+const t = UTS_TEXT[lang].bok;
+
+const cache = new Map<string, unknown>();
+async function bild(meta: ImageMetadata) {
+  if (cache.has(meta.src)) return cache.get(meta.src);
+  const widths = [...new Set([Math.min(520, meta.width), meta.width])];
+  const liten = await getImage({ src: meta, widths, format: 'webp', quality: 86 });
+  const stor = await getImage({ src: meta, format: 'webp', quality: 92 });
+  const res = {
+    src: liten.src,
+    srcset: liten.srcSet.attribute,
+    w: meta.width,
+    h: meta.height,
+    stor: stor.src,
+  };
+  cache.set(meta.src, res);
+  return res;
+}
+
+const data = [];
+for (const s of sidor) {
+  data.push('bild' in s ? { ...s, bild: await bild(s.bild) } : s);
+}
+const reserv = data.filter((s) => s.typ === 'bild' || s.typ === 'omslag' || s.typ === 'text');
+---
+
+<div
+  class="katalog"
+  data-katalog
+  role="region"
+  aria-roledescription="bok"
+  aria-label={`${UTS_TEXT[lang].katalog}: ${titel}`}
+  data-text={JSON.stringify({ omslag: t.omslag, baksida: t.baksida, forstora: t.forstora })}
+  tabindex="0"
+>
+  <script type="application/json" data-sidor set:html={JSON.stringify(data)} />
+
+  <div class="scen">
+    <div class="bok"></div>
+    <ul class="reserv">
+      {
+        reserv.map((s: any) =>
+          s.typ === 'text' ? (
+            <li class="reserv-text">{s.text}</li>
+          ) : (
+            <li>
+              <img src={s.bild.src} srcset={s.bild.srcset} sizes="(max-width: 640px) 92vw, 520px" width={s.bild.w} height={s.bild.h} alt={s.alt} loading="lazy" />
+            </li>
+          )
+        )
+      }
+    </ul>
+  </div>
+
+  <div class="kontroller">
+    <div class="tjocklek" aria-hidden="true"><span data-fyllnad></span></div>
+    <div class="rad">
+      <div class="sida-knappar">
+        <button type="button" class="pil" data-foreg aria-label={t.foreg}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+        </button>
+        <span class="raknare" data-raknare aria-live="polite">{t.omslag}</span>
+        <button type="button" class="pil" data-nasta aria-label={t.nasta}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
+        </button>
+      </div>
+    </div>
+    <p class="tips" data-tips><span class="tips-mus">{t.tipsMus}</span><span class="tips-touch">{t.tipsTouch}</span></p>
+  </div>
+
+  <dialog class="ljuslada" data-ljuslada aria-label={t.forstoradBild}>
+    <img alt="" data-ljuslada-bild />
+    <div class="ljuslada-sida" data-ljuslada-sida hidden></div>
+    <button type="button" class="textknapp ljuslada-stang" data-stang-dialog>{t.stang}</button>
+  </dialog>
+</div>
+
+<style>
+  .katalog {
+    --p: 480px;
+    --dur: 900ms;
+    --papper: #fff;
+    position: relative;
+    outline: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  /* Fokusram bara vid tangentbordsnavigering på dator (pekskärmar visar den även vid tryck) */
+  @media (hover: hover) {
+    .katalog:focus-visible .scen {
+      outline: 1px solid var(--line);
+      outline-offset: 12px;
+    }
+  }
+
+  /* ---------- Scen och bok ---------- */
+  .scen {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    perspective: calc(var(--p) * 6);
+    perspective-origin: 50% 50%;
+  }
+  .bok {
+    display: none;
+    position: relative;
+    width: calc(var(--p) * 2);
+    height: var(--p);
+    transform-style: preserve-3d;
+    transform: translateX(calc(var(--forskj, 0) * var(--p)));
+    transition: transform var(--dur) cubic-bezier(0.45, 0.05, 0.25, 1);
+    touch-action: pan-y;
+    cursor: pointer;
+  }
+  :global(.katalog.js) .bok {
+    display: block;
+  }
+  :global(.katalog.js) .reserv {
+    display: none;
+  }
+
+  /* Sidkanter: tunna ränder som visar hur mycket av boken som återstår */
+  .bok::before,
+  .bok::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    bottom: 2px;
+    background: repeating-linear-gradient(to right, #ece9e4 0 1px, #fbfaf8 1px 2px);
+    transition: width var(--dur);
+  }
+  .bok::after {
+    left: 100%;
+    width: var(--hoger, 0px);
+  }
+  .bok::before {
+    right: 100%;
+    width: var(--vanster, 0px);
+  }
+  .bok :global(.blad) {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 50%;
+    height: 100%;
+    transform-style: preserve-3d;
+    transform-origin: 0 50%;
+    /* Samma funktionslista i båda lägena, annars interpoleras vändningen som matris */
+    transform: translateZ(var(--dz, 0px)) rotateY(0deg);
+    transition: transform var(--dur) cubic-bezier(0.45, 0.05, 0.25, 1);
+    transition-delay: var(--fordrojning, 0ms);
+  }
+  .bok :global(.blad.vand) {
+    transform: translateZ(var(--dz, 0px)) rotateY(-180deg);
+  }
+  .bok :global(.blad.drar) {
+    transition: none;
+  }
+
+  .bok :global(.sida) {
+    position: absolute;
+    inset: 0;
+    background: var(--papper);
+    overflow: hidden;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+  }
+  .bok :global(.sida.bak) {
+    transform: rotateY(180deg);
+  }
+
+  /* Skugga under boken: bara på de sidor som ligger underst i varje hög */
+  .bok :global(.blad:last-child .fram),
+  .bok.uppslag :global(.blad:first-child .bak),
+  .bok :global(.blad.ror .sida),
+  .bok :global(.blad.drar .sida) {
+    box-shadow:
+      0 1px 2px rgba(30, 25, 20, 0.06),
+      0 18px 40px -18px rgba(30, 25, 20, 0.28);
+  }
+
+  /* Ryggen: en mjuk skuggning in mot falsen, mycket lättare än i tryckets förhandsvisning */
+  .bok :global(.sida::before) {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .bok :global(.sida.h::before) {
+    background: linear-gradient(
+      to right,
+      rgba(40, 34, 28, 0.13),
+      rgba(40, 34, 28, 0.04) 3.5%,
+      rgba(255, 255, 255, 0.07) 6%,
+      rgba(40, 34, 28, 0) 12%
+    );
+  }
+  .bok :global(.sida.v::before) {
+    background: linear-gradient(
+      to left,
+      rgba(40, 34, 28, 0.13),
+      rgba(40, 34, 28, 0.04) 3.5%,
+      rgba(255, 255, 255, 0.07) 6%,
+      rgba(40, 34, 28, 0) 12%
+    );
+  }
+
+  /* Ljus som skiftar över sidan medan den vänds */
+  .bok :global(.ljus) {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    opacity: var(--ljus, 0);
+  }
+  .bok :global(.fram .ljus) {
+    background: linear-gradient(to right, rgba(30, 26, 22, 0.05), rgba(30, 26, 22, 0.3));
+  }
+  .bok :global(.bak .ljus) {
+    background: linear-gradient(to left, rgba(30, 26, 22, 0.05), rgba(30, 26, 22, 0.3));
+  }
+  .bok :global(.blad.ror .ljus) {
+    animation: ljus var(--dur) cubic-bezier(0.45, 0.05, 0.25, 1) var(--fordrojning, 0ms);
+  }
+  @keyframes ljus {
+    0%,
+    100% {
+      opacity: 0;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
+  /* ---------- Sidornas innehåll ---------- */
+  .katalog :global(.s-text) {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 12%;
+    text-align: center;
+    font-family: 'Open Sans', -apple-system, sans-serif;
+    font-weight: 300;
+    font-size: calc(var(--p) * 0.052);
+    line-height: 1.22;
+    color: #1d1c1b;
+  }
+  .katalog :global(.s-bild) {
+    position: absolute;
+    inset: 5%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .katalog :global(.s-bild img) {
+    width: auto;
+    height: auto;
+    max-width: calc(100% * var(--skala, 1));
+    max-height: calc(100% * var(--skala, 1));
+    border-radius: 0;
+    background: #f4f2ee;
+  }
+  .katalog :global(.s-uppslag) {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+  }
+  .katalog :global(.s-uppslag img) {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 200%;
+    max-width: none;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 0;
+  }
+  .katalog :global(.s-uppslag.h img) {
+    left: -100%;
+  }
+  .katalog :global(.s-omslag) {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 9.5% 0 4%;
+    font-family: 'Open Sans', -apple-system, sans-serif;
+    color: #1d1c1b;
+  }
+  .katalog :global(.o-titel) {
+    font-weight: 300;
+    font-size: calc(var(--p) * 0.066);
+    line-height: 1;
+    letter-spacing: 0.02em;
+  }
+  .katalog :global(.o-linje) {
+    width: 66%;
+    height: 1px;
+    background: #2a2826;
+    margin: calc(var(--p) * 0.024) 0 calc(var(--p) * 0.03);
+  }
+  .katalog :global(.o-under) {
+    font-size: max(7px, calc(var(--p) * 0.0155));
+    letter-spacing: 0.16em;
+    white-space: pre;
+  }
+  .katalog :global(.o-bild) {
+    flex: 1;
+    min-height: 0;
+    width: 62%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-top: 5%;
+  }
+  .katalog :global(.o-bild img) {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    border-radius: 0;
+  }
+  .katalog :global(.s-baksida) {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 8%;
+    text-align: center;
+    font-family: 'Open Sans', -apple-system, sans-serif;
+    font-size: max(7px, calc(var(--p) * 0.016));
+    letter-spacing: 0.24em;
+    color: #6d6a66;
+  }
+
+  /* Förstoringsknapp på bildsidor */
+  .katalog :global(.forstora) {
+    position: absolute;
+    right: 3.5%;
+    bottom: 3.5%;
+    z-index: 4;
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(253, 252, 250, 0.86);
+    color: var(--text);
+    cursor: zoom-in;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  .katalog :global(.forstora svg) {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+  }
+  .katalog :global(.sida:hover .forstora),
+  .katalog :global(.forstora:focus-visible) {
+    opacity: 1;
+  }
+  /* På pekskärm förstoras en sida genom att trycka på den */
+  @media (hover: none) {
+    .katalog :global(.forstora) {
+      display: none;
+    }
+  }
+
+  /* Utan JavaScript */
+  .reserv {
+    list-style: none;
+    margin: 0 auto;
+    padding: 0;
+    max-width: 520px;
+  }
+  .reserv li {
+    margin: 0 0 48px;
+  }
+  .reserv img {
+    margin: 0 auto;
+  }
+  .reserv-text {
+    text-align: center;
+    font-family: 'Open Sans', sans-serif;
+    font-weight: 300;
+    font-size: 24px;
+    white-space: pre-line;
+  }
+
+  /* ---------- Kontroller ---------- */
+  .kontroller {
+    width: 100%;
+    max-width: calc(var(--bredd, var(--p) * 2));
+    margin: 28px auto 0;
+  }
+  .tjocklek {
+    height: 1px;
+    background: var(--line);
+    position: relative;
+  }
+  .tjocklek span {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 0;
+    background: var(--muted);
+    transition: width var(--dur) ease;
+  }
+  .rad {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 10px;
+  }
+  .sida-knappar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .pil {
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    background: none;
+    color: var(--text);
+    cursor: pointer;
+    border-radius: 50%;
+    transition: color 0.2s, background 0.2s;
+  }
+  .pil:hover {
+    background: #f1efeb;
+  }
+  .pil:disabled {
+    color: var(--line);
+    cursor: default;
+    background: none;
+  }
+  .pil svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .raknare {
+    min-width: 8.5em;
+    text-align: center;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .textknapp {
+    border: 0;
+    background: none;
+    padding: 6px 0;
+    font: inherit;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .textknapp:hover {
+    color: var(--text);
+  }
+  .tips {
+    margin: 14px 0 0;
+    text-align: center;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    transition: opacity 0.6s ease;
+  }
+  .tips.dold {
+    opacity: 0;
+  }
+  .tips-touch {
+    display: none;
+  }
+  @media (hover: none) {
+    .tips-mus {
+      display: none;
+    }
+    .tips-touch {
+      display: inline;
+    }
+  }
+
+  /* ---------- Dialoger ---------- */
+  dialog {
+    border: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+  }
+  dialog::backdrop {
+    background: rgba(253, 252, 250, 0.96);
+  }
+  .ljuslada {
+    max-width: 100vw;
+    max-height: 100dvh;
+    width: 100vw;
+    height: 100dvh;
+    background: transparent;
+    display: none;
+    place-items: center;
+    cursor: zoom-out;
+  }
+  .ljuslada[open] {
+    display: grid;
+  }
+  .ljuslada img {
+    max-width: calc(100vw - 48px);
+    max-height: calc(100dvh - 96px);
+    width: auto;
+    height: auto;
+    border-radius: 0;
+    box-shadow: 0 30px 80px -30px rgba(30, 25, 20, 0.35);
+  }
+  .ljuslada [hidden] {
+    display: none !important;
+  }
+  .ljuslada-sida {
+    position: relative;
+    width: var(--p);
+    height: var(--p);
+    background: #fff;
+    overflow: hidden;
+    box-shadow: 0 30px 80px -30px rgba(30, 25, 20, 0.35);
+  }
+  .ljuslada-stang {
+    position: fixed;
+    top: 16px;
+    right: 24px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .katalog {
+      --dur: 1ms;
+    }
+  }
+</style>
+
+<script>
+  type Bild = { src: string; srcset: string; w: number; h: number; stor: string };
+  type Sida =
+    | { typ: 'omslag'; bild: Bild; alt: string; rubrik: string; underrubrik: string }
+    | { typ: 'baksida'; text: string }
+    | { typ: 'tom' }
+    | { typ: 'text'; text: string }
+    | { typ: 'bild'; bild: Bild; alt: string; skala?: number }
+    | { typ: 'uppslag'; bild: Bild; alt: string; halva: 'v' | 'h' };
+  type Post = { sida: Sida; idx: number };
+
+  const esc = (s: string) =>
+    s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+
+  const LUPP =
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5M10.5 8v5M8 10.5h5"/></svg>';
+
+  class Katalog {
+    root: HTMLElement;
+    sidor: Sida[];
+    bok: HTMLElement;
+    lage: 'uppslag' | null = null;
+    blad: [Post | null, Post | null][] = [];
+    bladEl: HTMLElement[] = [];
+    k = 0;
+    N = 0;
+    P = 0;
+    dur = 900;
+    zRaknare = 0;
+    drag: any = null;
+    harBladdrat = false;
+    text: { omslag: string; baksida: string; forstora: string };
+
+    constructor(root: HTMLElement) {
+      this.root = root;
+      this.text = JSON.parse(root.dataset.text!);
+      this.sidor = JSON.parse(root.querySelector('[data-sidor]')!.textContent!);
+      this.bok = root.querySelector('.bok')!;
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) this.dur = 1;
+      root.classList.add('js');
+
+      // Startposition från adressen, t.ex. #sida-7
+      const m = location.hash.match(/sida-(\d+)/);
+      const startIdx = m ? Math.min(+m[1], this.sidor.length - 1) : 0;
+
+      this.layout(startIdx);
+      if (m) requestAnimationFrame(() => root.scrollIntoView({ block: 'center' }));
+      new ResizeObserver(() => this.layout()).observe(root);
+
+      root.querySelector('[data-foreg]')!.addEventListener('click', () => this.foreg());
+      root.querySelector('[data-nasta]')!.addEventListener('click', () => this.nasta());
+      root.querySelectorAll('[data-stang-dialog]').forEach((b) =>
+        b.addEventListener('click', () => (b.closest('dialog') as HTMLDialogElement).close())
+      );
+      const ljuslada = root.querySelector<HTMLDialogElement>('[data-ljuslada]')!;
+      ljuslada.addEventListener('click', () => ljuslada.close());
+
+      const tangent = (e: KeyboardEvent) => {
+        if (document.querySelector('dialog[open]')) return;
+        if (e.key === 'ArrowRight' || e.key === 'PageDown') (this.nasta(), e.preventDefault());
+        else if (e.key === 'ArrowLeft' || e.key === 'PageUp') (this.foreg(), e.preventDefault());
+        else if (e.key === 'Home') (this.gaTill(0), e.preventDefault());
+        else if (e.key === 'End') (this.gaTill(this.maxK()), e.preventDefault());
+      };
+      // Piltangenterna bläddrar när boken syns på skärmen
+      let synlig = false;
+      new IntersectionObserver(([e]) => (synlig = e.intersectionRatio >= 0.5), {
+        threshold: [0, 0.5, 1],
+      }).observe(this.bok);
+      document.addEventListener('keydown', (e) => {
+        const mal = e.target as HTMLElement;
+        if (mal.closest('input, textarea, select, [contenteditable]')) return;
+        if (synlig || root.contains(mal)) tangent(e);
+      });
+
+      this.bok.addEventListener('pointerdown', (e) => this.ned(e));
+      this.bok.addEventListener('pointermove', (e) => this.flytta(e));
+      this.bok.addEventListener('pointerup', (e) => this.upp(e));
+      this.bok.addEventListener('pointercancel', () => this.avbryt());
+      this.bok.addEventListener('click', (e) => {
+        const knapp = (e.target as HTMLElement).closest<HTMLButtonElement>('.forstora');
+        if (knapp) this.forstora(+knapp.dataset.idx!);
+      });
+    }
+
+    // ---------- Uppbyggnad ----------
+
+    maxK() {
+      return this.N;
+    }
+
+    /** Index i sidlistan för den första synliga sidan i uppslaget */
+    synligIdx() {
+      return this.k === 0 ? 0 : Math.min(2 * this.k - 1, this.sidor.length - 1);
+    }
+
+    kForIdx(idx: number) {
+      return Math.ceil(idx / 2);
+    }
+
+    layout(startIdx?: number) {
+      const cw = this.root.clientWidth;
+      if (!cw) return;
+      const maxH = Math.min(innerHeight * 0.74, 600);
+      // Samma bok överallt: hela uppslag sida vid sida, även på mobil
+      const lage = 'uppslag' as const;
+      const P = Math.floor(Math.min(cw / 2, maxH));
+
+      const idx = startIdx ?? (this.lage ? this.synligIdx() : 0);
+      this.P = P;
+      this.root.style.setProperty('--p', P + 'px');
+      this.root.style.setProperty('--dur', this.dur + 'ms');
+      this.root.style.setProperty('--bredd', 2 * P + 'px');
+
+      if (lage !== this.lage || startIdx !== undefined) {
+        this.bygg(lage);
+        this.k = Math.min(this.kForIdx(idx), this.maxK());
+        this.uppdatera(true);
+      } else {
+        this.ladda();
+      }
+    }
+
+    bygg(lage: 'uppslag') {
+      this.lage = lage;
+      const poster: Post[] = this.sidor.map((sida, idx) => ({ sida, idx }));
+      // Blad: framsida (högersida) och baksida (vänstersida på nästa uppslag)
+      this.blad = [];
+      for (let i = 0; i < poster.length; i += 2) this.blad.push([poster[i], poster[i + 1] ?? null]);
+      this.N = this.blad.length;
+      this.bok.className = 'bok ' + lage;
+      const sida = (p: Post | null, klass: string) =>
+        `<div class="sida ${klass}"${p ? ` data-idx="${p.idx}"` : ''}>${p ? this.sidHtml(p) : ''}<i class="ljus"></i></div>`;
+      this.bok.innerHTML = this.blad
+        .map(([f, b], i) => `<div class="blad" data-i="${i}">${sida(f, 'fram h')}${sida(b, 'bak v')}</div>`)
+        .join('');
+      this.bladEl = [...this.bok.children] as HTMLElement[];
+    }
+
+    img(b: Bild, alt: string, sizes: string) {
+      return `<img data-srcset="${b.srcset}" data-sizes="${sizes}" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" width="${b.w}" height="${b.h}" alt="${esc(alt)}" decoding="async" draggable="false">`;
+    }
+
+    sidHtml({ sida: s, idx }: Post, mini = false) {
+      const knapp = mini
+        ? ''
+        : `<button type="button" class="forstora" data-idx="${idx}" aria-label="${esc(this.text.forstora)}">${LUPP}</button>`;
+      switch (s.typ) {
+        case 'tom':
+          return '';
+        case 'text':
+          return `<div class="s-text">${esc(s.text).replace(/\n/g, '<br>')}</div>`;
+        case 'bild':
+          return `<div class="s-bild" style="--skala:${s.skala ?? 1}">${this.img(s.bild, s.alt, 'P')}</div>${knapp}`;
+        case 'uppslag':
+          return `<div class="s-uppslag ${s.halva}">${this.img(s.bild, s.alt, '2P')}</div>${s.halva === 'h' ? knapp : ''}`;
+        case 'omslag':
+          return `<div class="s-omslag"><div class="o-titel">${esc(s.rubrik)}</div><div class="o-linje"></div><div class="o-under">${esc(s.underrubrik)}</div><div class="o-bild">${this.img(s.bild, s.alt, '0.6P')}</div></div>`;
+        case 'baksida':
+          return `<div class="s-baksida">${esc(s.text)}</div>`;
+      }
+    }
+
+    /** Ladda bara bilder nära den uppslagna sidan */
+    ladda(rot: ParentNode = this.bok, alla = false, sidstorlek = 96) {
+      const fran = this.k - 2;
+      const till = this.k + 3;
+      const imgs =
+        rot === this.bok
+          ? this.bladEl.filter((_, i) => alla || (i >= fran && i <= till)).flatMap((el) => [...el.querySelectorAll('img')])
+          : [...rot.querySelectorAll('img')];
+      const P = rot === this.bok ? this.P : sidstorlek;
+      for (const img of imgs) {
+        const s = img.dataset.sizes!;
+        const px = s === '2P' ? 2 * P : s === '0.6P' ? 0.6 * P : P;
+        img.sizes = Math.ceil(px) + 'px';
+        if (img.dataset.srcset && !img.srcset) img.srcset = img.dataset.srcset;
+      }
+    }
+
+    // ---------- Läge ----------
+
+    uppdatera(direkt = false) {
+      const { k, N } = this;
+      this.bladEl.forEach((el, i) => {
+        el.classList.toggle('vand', i < k);
+        if (!el.classList.contains('ror') && !el.classList.contains('slapp')) this.stapla(el, i);
+        const synlig = this.lage === 'uppslag' ? i === k - 1 || i === k : i === k;
+        el.toggleAttribute('inert', !synlig);
+        el.setAttribute('aria-hidden', synlig ? 'false' : 'true');
+      });
+      const forskj = this.lage === 'uppslag' ? (k === 0 ? -0.5 : k === N ? 0.5 : 0) : 0;
+      this.bok.style.setProperty('--forskj', String(forskj));
+      // Sidkanter: kvarvarande sidor till höger, lästa till vänster
+      const t = Math.max(2, Math.round(this.P * 0.008));
+      this.bok.style.setProperty('--hoger', k < N ? `${Math.ceil((t * (N - k)) / N)}px` : '0px');
+      this.bok.style.setProperty('--vanster', k > 0 ? `${Math.ceil((t * k) / N)}px` : '0px');
+
+      const ft = this.root.querySelector<HTMLElement>('[data-fyllnad]')!;
+      ft.style.width = (this.maxK() ? (k / this.maxK()) * 100 : 0) + '%';
+      this.root.querySelector<HTMLButtonElement>('[data-foreg]')!.disabled = k === 0;
+      this.root.querySelector<HTMLButtonElement>('[data-nasta]')!.disabled = k >= this.maxK();
+      this.root.querySelector('[data-raknare]')!.textContent = this.etikett(k);
+
+      // Utan animation (vid start och lägesbyte): stäng av övergångar, läs av layouten, slå på igen
+      if (direkt) {
+        const alla = [this.bok, ...this.bladEl];
+        alla.forEach((el) => (el.style.transition = 'none'));
+        void this.bok.offsetWidth;
+        alla.forEach((el) => (el.style.transition = ''));
+      }
+
+      this.ladda();
+    }
+
+    etikett(k: number) {
+      const inre = this.sidor.length - 2;
+      if (k === 0) return this.text.omslag;
+      if (k === this.maxK()) return this.text.baksida;
+      return `${2 * k - 1}–${2 * k} / ${inre}`;
+    }
+
+    // ---------- Bläddra ----------
+
+    /** Placera ett blad i sin hög. Ett litet djupavstånd behövs eftersom
+     *  webbläsaren i 3D ritar efter djup, inte efter z-index. */
+    stapla(el: HTMLElement, i: number) {
+      const k = this.k;
+      const djup = i < k ? k - 1 - i : i - k;
+      el.style.zIndex = String(i < k ? i + 1 : 2 * this.N - i);
+      el.style.setProperty('--dz', `${(-djup * 0.4).toFixed(1)}px`);
+    }
+
+    vand(i: number, fordrojning = 0, ms = this.dur) {
+      const el = this.bladEl[i];
+      if (!el) return;
+      el.style.zIndex = String(1000 + ++this.zRaknare);
+      el.style.setProperty('--dz', '1px');
+      el.classList.remove('ror');
+      void el.offsetWidth;
+      el.style.setProperty('--fordrojning', fordrojning + 'ms');
+      el.style.transitionDuration = ms + 'ms';
+      el.classList.add('ror');
+      clearTimeout((el as any)._t);
+      (el as any)._t = setTimeout(() => {
+        el.classList.remove('ror');
+        el.style.removeProperty('--fordrojning');
+        el.style.transitionDuration = '';
+        this.stapla(el, i);
+      }, ms + fordrojning + 60);
+    }
+
+    gaTill(mal: number, spridning = 0) {
+      mal = Math.max(0, Math.min(this.maxK(), mal));
+      if (mal === this.k) return;
+      const fram = mal > this.k;
+      const steg = Math.abs(mal - this.k);
+      const sprid = spridning || (steg > 1 ? Math.min(90, 700 / steg) : 0);
+      for (let n = 0; n < steg; n++) {
+        const i = fram ? this.k + n : this.k - 1 - n;
+        this.vand(i, n * sprid);
+      }
+      this.k = mal;
+      this.uppdatera();
+      this.doljTips();
+    }
+
+    nasta() {
+      this.gaTill(this.k + 1);
+    }
+    foreg() {
+      this.gaTill(this.k - 1);
+    }
+
+    doljTips() {
+      if (this.harBladdrat) return;
+      this.harBladdrat = true;
+      this.root.querySelector('[data-tips]')?.classList.add('dold');
+    }
+
+    // ---------- Dra med fingret eller musen ----------
+
+    ned(e: PointerEvent) {
+      if (e.button !== 0 || (e.target as HTMLElement).closest('button')) return;
+      this.drag = { x: e.clientX, y: e.clientY, t: performance.now(), aktiv: false, id: e.pointerId };
+    }
+
+    flytta(e: PointerEvent) {
+      const d = this.drag;
+      if (!d || e.pointerId !== d.id) return;
+      const dx = e.clientX - d.x;
+      const dy = e.clientY - d.y;
+      if (!d.aktiv) {
+        if (Math.abs(dx) < 8) return;
+        if (Math.abs(dy) > Math.abs(dx)) return (this.drag = null);
+        d.riktning = dx < 0 ? 1 : -1;
+        d.i = d.riktning === 1 ? this.k : this.k - 1;
+        const ok = d.riktning === 1 ? this.k < this.maxK() : this.k > 0;
+        if (!ok) return (this.drag = null);
+        d.el = this.bladEl[d.i];
+        d.el.classList.add('drar');
+        d.el.classList.remove('ror');
+        d.el.style.zIndex = '3000';
+        d.el.style.setProperty('--dz', '1px');
+        d.aktiv = true;
+        this.bok.setPointerCapture(e.pointerId);
+        this.doljTips();
+      }
+      const W = this.P * 1.5;
+      const p = Math.max(0, Math.min(1, (d.riktning === 1 ? -dx : dx) / W));
+      const vinkel = d.riktning === 1 ? -180 * p : -180 * (1 - p);
+      d.el.style.transform = `translateZ(1px) rotateY(${vinkel}deg)`;
+      d.el.style.setProperty('--ljus', String(Math.sin(p * Math.PI)));
+      d.p = p;
+      const nu = performance.now();
+      d.v = (e.clientX - (d.senX ?? d.x)) / Math.max(1, nu - (d.senT ?? d.t));
+      d.senX = e.clientX;
+      d.senT = nu;
+    }
+
+    upp(e: PointerEvent) {
+      const d = this.drag;
+      this.drag = null;
+      if (!d || e.pointerId !== d.id) return;
+      if (!d.aktiv) {
+        // Pekskärm: ett tryck på en sida visar den stort. Mus: klick bläddrar.
+        if (e.pointerType === 'touch') {
+          const sida = (e.target as HTMLElement).closest<HTMLElement>('.sida[data-idx]');
+          if (sida) return this.visaStor(+sida.dataset.idx!);
+        }
+        const r = this.bok.getBoundingClientRect();
+        if ((e.clientX - r.left) / r.width >= 0.5) this.nasta();
+        else this.foreg();
+        return;
+      }
+      const snabb = d.riktning === 1 ? d.v < -0.4 : d.v > 0.4;
+      const klar = d.p > 0.3 || snabb;
+      const el = d.el as HTMLElement;
+      const rest = klar ? 1 - d.p : d.p;
+      const ms = Math.max(220, this.dur * rest);
+      el.classList.remove('drar');
+      el.classList.add('slapp');
+      el.style.transitionDuration = ms + 'ms';
+      el.style.removeProperty('--ljus');
+      el.style.transform = '';
+      if (klar) this.k += d.riktning;
+      el.classList.toggle('vand', d.i < this.k);
+      setTimeout(() => {
+        el.classList.remove('slapp');
+        el.style.transitionDuration = '';
+        this.stapla(el, d.i);
+      }, ms + 40);
+      this.uppdatera();
+    }
+
+    avbryt() {
+      const d = this.drag;
+      this.drag = null;
+      if (!d?.aktiv) return;
+      d.el.classList.remove('drar');
+      d.el.style.transform = '';
+      d.el.style.removeProperty('--ljus');
+      this.uppdatera();
+    }
+
+    // ---------- Översikt och förstoring ----------
+
+    /** Visa en sida stort: bildsidor som verket i full storlek, övriga som en stor sida */
+    visaStor(idx: number) {
+      const s = this.sidor[idx];
+      if (!s) return;
+      if (s.typ === 'bild' || s.typ === 'uppslag') return this.forstora(idx);
+      if (s.typ !== 'text' && s.typ !== 'omslag') return;
+      const dlg = this.root.querySelector<HTMLDialogElement>('[data-ljuslada]')!;
+      const yta = dlg.querySelector<HTMLElement>('[data-ljuslada-sida]')!;
+      const P = Math.floor(Math.min(innerWidth - 32, innerHeight - 120, 900));
+      yta.style.setProperty('--p', P + 'px');
+      yta.innerHTML = this.sidHtml({ sida: s, idx }, true);
+      this.ladda(yta, true, P);
+      yta.hidden = false;
+      dlg.querySelector<HTMLImageElement>('[data-ljuslada-bild]')!.hidden = true;
+      dlg.showModal();
+    }
+
+    forstora(idx: number) {
+      const s = this.sidor[idx] as any;
+      if (!s?.bild) return;
+      const dlg = this.root.querySelector<HTMLDialogElement>('[data-ljuslada]')!;
+      const img = dlg.querySelector<HTMLImageElement>('[data-ljuslada-bild]')!;
+      dlg.querySelector<HTMLElement>('[data-ljuslada-sida]')!.hidden = true;
+      img.hidden = false;
+      img.src = s.bild.stor;
+      img.alt = s.alt;
+      dlg.showModal();
+    }
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-katalog]').forEach((el) => new Katalog(el));
+</script>
