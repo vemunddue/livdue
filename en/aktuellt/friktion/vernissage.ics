@@ -1,0 +1,16 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//livdue.com//Utstallning//SV
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+BEGIN:VEVENT
+UID:vernissage-friktion@livdue.com
+DTSTAMP:20261017T100000Z
+DTSTART:20261017T100000Z
+DTEND:20261017T140000Z
+SUMMARY:Opening: Liv Due – Friktion
+LOCATION:Ulf Lindell Gallery\, Hornsgatan 44 A\, Stockholm
+DESCRIPTION:The exhibition runs 17 October – 15 November 2026. Open Wednesdays 12–6 pm and Saturdays 12–4 pm.
+URL:https://livdue.com/en/aktuellt/friktion/
+END:VEVENT
+END:VCALENDAR
