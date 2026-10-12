@@ -131,7 +131,7 @@ export const FRIKTION: Utstallning = {
       'som tårar på vår sårbarhet...?',
     ],
     [
-      '(Var ar jag?)',
+      '(Var är jag?)',
       'Ibland stark som en noshörning,',
       'ibland rädd med huvudet i sanden.',
       'En grävmaskinstand har hål som passar för en nagel av glas.',
