@@ -187,11 +187,39 @@ const reserv = data.filter((s) => s.typ === 'bild' || s.typ === 'omslag' || s.ty
     transform: rotateY(180deg);
   }
 
+  /* --lyft (0–1) beskriver hur högt bladet är lyft under vändningen. Ljus och
+     kastskugga följer det mjukt, så att inget slår av tvärt när sidan landar. */
+  @property --lyft {
+    syntax: '<number>';
+    inherits: true;
+    initial-value: 0;
+  }
+  .bok :global(.blad .sida) {
+    box-shadow:
+      0 1px 2px rgba(30, 25, 20, calc(0.06 * var(--lyft))),
+      0 18px 40px -18px rgba(30, 25, 20, calc(0.28 * var(--lyft)));
+  }
+  .bok :global(.blad.ror) {
+    animation: lyft var(--dur) cubic-bezier(0.45, 0.05, 0.25, 1) var(--fordrojning, 0ms);
+  }
+  .bok :global(.blad.slapp) {
+    transition:
+      transform var(--slapp) cubic-bezier(0.25, 0.1, 0.25, 1),
+      --lyft var(--slapp) ease-out;
+  }
+  @keyframes lyft {
+    0%,
+    100% {
+      --lyft: 0;
+    }
+    50% {
+      --lyft: 1;
+    }
+  }
+
   /* Skugga under boken: bara på de sidor som ligger underst i varje hög */
   .bok :global(.blad:last-child .fram),
-  .bok.uppslag :global(.blad:first-child .bak),
-  .bok :global(.blad.ror .sida),
-  .bok :global(.blad.drar .sida) {
+  .bok.uppslag :global(.blad:first-child .bak) {
     box-shadow:
       0 1px 2px rgba(30, 25, 20, 0.06),
       0 18px 40px -18px rgba(30, 25, 20, 0.28);
@@ -230,25 +258,13 @@ const reserv = data.filter((s) => s.typ === 'bild' || s.typ === 'omslag' || s.ty
     inset: 0;
     z-index: 3;
     pointer-events: none;
-    opacity: var(--ljus, 0);
+    opacity: var(--lyft, 0);
   }
   .bok :global(.fram .ljus) {
     background: linear-gradient(to right, rgba(30, 26, 22, 0.05), rgba(30, 26, 22, 0.3));
   }
   .bok :global(.bak .ljus) {
     background: linear-gradient(to left, rgba(30, 26, 22, 0.05), rgba(30, 26, 22, 0.3));
-  }
-  .bok :global(.blad.ror .ljus) {
-    animation: ljus var(--dur) cubic-bezier(0.45, 0.05, 0.25, 1) var(--fordrojning, 0ms);
-  }
-  @keyframes ljus {
-    0%,
-    100% {
-      opacity: 0;
-    }
-    50% {
-      opacity: 1;
-    }
   }
 
   /* ---------- Sidornas innehåll ---------- */
@@ -884,7 +900,7 @@ const reserv = data.filter((s) => s.typ === 'bild' || s.typ === 'omslag' || s.ty
       const p = Math.max(0, Math.min(1, (d.riktning === 1 ? -dx : dx) / W));
       const vinkel = d.riktning === 1 ? -180 * p : -180 * (1 - p);
       d.el.style.transform = `translateZ(1px) rotateY(${vinkel}deg)`;
-      d.el.style.setProperty('--ljus', String(Math.sin(p * Math.PI)));
+      d.el.style.setProperty('--lyft', Math.sin(p * Math.PI).toFixed(3));
       d.p = p;
       const nu = performance.now();
       d.v = (e.clientX - (d.senX ?? d.x)) / Math.max(1, nu - (d.senT ?? d.t));
@@ -912,16 +928,18 @@ const reserv = data.filter((s) => s.typ === 'bild' || s.typ === 'omslag' || s.ty
       const el = d.el as HTMLElement;
       const rest = klar ? 1 - d.p : d.p;
       const ms = Math.max(220, this.dur * rest);
+      // Sidan glider på plats och lyftet tonar ut i samma takt (ingen tvär skuggändring)
+      el.style.setProperty('--slapp', ms + 'ms');
       el.classList.remove('drar');
       el.classList.add('slapp');
-      el.style.transitionDuration = ms + 'ms';
-      el.style.removeProperty('--ljus');
+      el.style.setProperty('--lyft', '0');
       el.style.transform = '';
       if (klar) this.k += d.riktning;
       el.classList.toggle('vand', d.i < this.k);
       setTimeout(() => {
         el.classList.remove('slapp');
-        el.style.transitionDuration = '';
+        el.style.removeProperty('--slapp');
+        el.style.removeProperty('--lyft');
         this.stapla(el, d.i);
       }, ms + 40);
       this.uppdatera();
@@ -933,7 +951,7 @@ const reserv = data.filter((s) => s.typ === 'bild' || s.typ === 'omslag' || s.ty
       if (!d?.aktiv) return;
       d.el.classList.remove('drar');
       d.el.style.transform = '';
-      d.el.style.removeProperty('--ljus');
+      d.el.style.removeProperty('--lyft');
       this.uppdatera();
     }
 
