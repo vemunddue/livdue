@@ -108,7 +108,13 @@ const visas = status(u) !== 'avslutad';
     color: var(--ink);
     transition: background 0.25s ease, color 0.25s ease;
   }
-  a:hover .vidare,
+  /* Fylls bara vid muspekare: på pekskärm blir hover-läget annars kvar efter ett tryck */
+  @media (hover: hover) {
+    a:hover .vidare {
+      background: var(--ink);
+      color: var(--bg);
+    }
+  }
   a:focus-visible .vidare {
     background: var(--ink);
     color: var(--bg);
@@ -116,6 +122,9 @@ const visas = status(u) !== 'avslutad';
   @media (max-width: 640px) {
     .teaser {
       margin-bottom: 96px;
+    }
+    .vidare {
+      width: 100%;
     }
     .teaser :global(img) {
       max-width: 70vw;
